@@ -16,7 +16,7 @@ class MyButton extends StatelessWidget {
         height: size,
         child: Stack(
           children: [
-            Image.asset('assets/images/circle_btn_$image.png'),
+            Image.asset('assets/images/$image.png'),
             Center(child: child ?? Container())
           ],
         ),

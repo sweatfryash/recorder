@@ -19,7 +19,7 @@ class LinkFailedPage extends StatelessWidget {
               children: [
                 SizedBox(width: 13.w),
                 MyButton(
-                  image: '32',
+                  image: 'circle_btn_32',
                   size: 32.w,
                 ),
                 SizedBox(width: 9.w),
@@ -70,7 +70,7 @@ class LinkFailedPage extends StatelessWidget {
 
   MyButton _smallButton(String str) {
     return MyButton(
-      image: '32',
+      image: 'circle_btn_32',
       size: 32.w,
       child: Text(
         str,
