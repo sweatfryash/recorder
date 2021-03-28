@@ -29,7 +29,7 @@ class AboutPage extends StatelessWidget {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Text('产品使用说明', style: MyText.bodyText),
+                    Text('产品使用说明', style: MyText.bodyText1),
                     MyButton(
                         image: '36_link', size: 36.w, onTap: onProductUseTap)
                   ],
@@ -38,7 +38,7 @@ class AboutPage extends StatelessWidget {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Text('官网', style: MyText.bodyText),
+                    Text('官网', style: MyText.bodyText1),
                     MyButton(
                         image: '36_link', size: 36.w, onTap: onWebsiteTap)
                   ],
@@ -46,11 +46,11 @@ class AboutPage extends StatelessWidget {
                 buildDivider(),
                 Row(
                   children: [
-                    Text('语言', style: MyText.bodyText),
+                    Text('语言', style: MyText.bodyText1),
                     Spacer(),
                     //这个‘中文’值应该是要从全局的设置里取
                     Text('中文',
-                        style: MyText.bodyText
+                        style: MyText.bodyText1
                             .copyWith(color: const Color(0xff666666))),
                     SizedBox(
                       width: 11.58.w,

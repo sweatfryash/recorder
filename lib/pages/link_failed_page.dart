@@ -10,7 +10,7 @@ class LinkFailedPage extends StatelessWidget {
     return Scaffold(
       backgroundColor: kBackgroundColor,
       body: DefaultTextStyle(
-        style: MyText.bodyText,
+        style: MyText.bodyText1,
         child: Column(
           children: [
             SizedBox(width: double.infinity),
