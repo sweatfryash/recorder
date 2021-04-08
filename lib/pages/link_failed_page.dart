@@ -1,3 +1,6 @@
+/*
+* 提示连接蓝牙设备界面
+* */
 import 'package:flutter/material.dart';
 import 'package:sounds_recorder/theme/colors.dart';
 import 'package:sounds_recorder/theme/text_style.dart';
