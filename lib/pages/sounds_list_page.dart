@@ -1,6 +1,14 @@
+import 'dart:io';
+
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_svg/flutter_svg.dart';
+import 'package:permission_handler/permission_handler.dart';
+import 'package:sounds_recorder/app_settings.dart';
+import 'package:sounds_recorder/pages/about_page.dart';
+import 'package:sounds_recorder/pages/play_page.dart';
+import 'package:sounds_recorder/pages/record_page.dart';
 import 'package:sounds_recorder/theme/colors.dart';
 import 'package:sounds_recorder/theme/text_style.dart';
 import 'package:sounds_recorder/widgets/buttons.dart';
@@ -12,15 +20,19 @@ class SoundsListPage extends StatefulWidget {
 
 class _SoundsListPageState extends State<SoundsListPage> {
   //文件名列表
-  List<String> sounds = <String>[
-    '录音——201-02/18 22：2 5：录音——201-02/18 22：2 5：录音——201-02/18 22：2 5：',
-    '3/18备忘',
-    '录音——201-02/18 22：2 5：03',
-    '录音——201-02/18 22：2 5：03',
-    '录音——201-02/18 22：2 5：03',
-    '录音——201-02/18 22：2 5：03',
-    '录音——201-02/18 22：2 5：03',
-  ];
+  final List<Sound> soundList = <Sound>[];
+  late Future _future;
+
+  @override
+  void initState() {
+    super.initState();
+    _future = _getSoundList();
+    WidgetsBinding.instance?.addPostFrameCallback((timeStamp) async {
+      if (!await Permission.microphone.request().isGranted) {
+        print('----请设置录音权限');
+      }
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -34,28 +46,34 @@ class _SoundsListPageState extends State<SoundsListPage> {
                 SizedBox(width: double.infinity, height: 45.h),
                 appBar(),
                 SizedBox(height: 21.h),
-                Row(
-                  children: [
-                    SizedBox(width: 15.w),
-                    Text(
-                      '最近录音',
-                      style: MyText.bodyText2
-                          .copyWith(color: const Color(0xffa2a3a7)),
-                    ),
-                  ],
-                ),
-                SizedBox(height: 8.h),
                 Expanded(
-                  child: Padding(
-                    padding: EdgeInsets.symmetric(horizontal: 15.w),
-                    child: ListView.builder(
-                      padding: EdgeInsets.zero,
-                      itemExtent: 120.h,
-                      itemCount: sounds.length,
-                      itemBuilder: itemBuilder,
-                    ),
+                    child: RefreshIndicator(
+                  onRefresh: () {
+                    setState(() {
+                      _future = _getSoundList();
+                    });
+                    return Future.value();
+                  },
+                  child: FutureBuilder(
+                    future: _future,
+                    builder: (BuildContext context,
+                        AsyncSnapshot<dynamic> snapshot) {
+                      if (snapshot.hasError) {
+                        return Text('Error: ${snapshot.error}');
+                      } else {
+                        if (snapshot.connectionState == ConnectionState.done) {
+                          return _soundListView();
+                        } else {
+                          if (soundList.isEmpty) {
+                            return Text('loading...');
+                          } else {
+                            return _soundListView();
+                          }
+                        }
+                      }
+                    },
                   ),
-                )
+                )),
               ],
             ),
           ),
@@ -73,6 +91,48 @@ class _SoundsListPageState extends State<SoundsListPage> {
     );
   }
 
+  Column _soundListView() {
+    return Column(
+      children: [
+        Row(
+          children: [
+            SizedBox(width: 15.w),
+            Text(
+              '最近录音',
+              style: MyText.bodyText2.copyWith(color: const Color(0xffa2a3a7)),
+            ),
+          ],
+        ),
+        SizedBox(height: 8.h),
+        Expanded(
+          child: Padding(
+            padding: EdgeInsets.symmetric(horizontal: 15.w),
+            child: ListView.builder(
+              padding: EdgeInsets.zero,
+              itemExtent: 120.h,
+              itemCount: soundList.length,
+              itemBuilder: itemBuilder,
+            ),
+          ),
+        )
+      ],
+    );
+  }
+
+  Future<void> _getSoundList() async {
+    Directory dir = Directory(AppSettings.basePath + '/sounds');
+    if (!dir.existsSync()) {
+      dir.createSync();
+    }
+    List<FileSystemEntity> list = dir.listSync();
+    soundList.clear();
+    for (FileSystemEntity item in list) {
+      DateTime changeTime = (await item.stat()).changed;
+      soundList.add(Sound(item.path.split('/').last, changeTime));
+    }
+    soundList.sort((a, b) => b.changedTime.compareTo(a.changedTime));
+  }
+
   Widget appBar() {
     return Row(
       children: [
@@ -85,8 +145,10 @@ class _SoundsListPageState extends State<SoundsListPage> {
         Spacer(),
         Text(
           'LeMuna AI',
-          style: MyText.bodyText1
-              .copyWith(fontWeight: FontWeight.bold, color: kTitleTextColor,fontSize: 18),
+          style: MyText.bodyText1.copyWith(
+              fontWeight: FontWeight.bold,
+              color: kTitleTextColor,
+              fontSize: 18),
         ),
         Spacer(),
         SizedBox(width: 42.h + 12.w)
@@ -94,13 +156,27 @@ class _SoundsListPageState extends State<SoundsListPage> {
     );
   }
 
-  void onMenuTap() {}
+  void onMenuTap() {
+    Navigator.push(context,
+        MaterialPageRoute(builder: (BuildContext context) => AboutPage()));
+  }
+
   //右下角的悬浮图标
-  void onMicTap() {}
+  void onMicTap() {
+    Navigator.push(context,
+        CupertinoPageRoute(builder: (BuildContext context) => RecordPage()));
+  }
 
   void onTransTap() {}
 
-  void onPlayTap() {}
+  void onPlayTap(int index) {
+    Navigator.push(
+        context,
+        CupertinoPageRoute(
+            builder: (BuildContext context) =>
+                PlayPage(sound: soundList[index].path)));
+  }
+
   //‘转换至’右边的语言按钮
   void onLanguageTap() {}
 
@@ -119,8 +195,9 @@ class _SoundsListPageState extends State<SoundsListPage> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Expanded(
-                      child: Text(sounds[index],
-                          style: MyText.bodyText1.copyWith(fontSize: 16,height: 1),
+                      child: Text(soundList[index].path,
+                          style: MyText.bodyText1
+                              .copyWith(fontSize: 16, height: 1),
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis)),
                   Row(
@@ -133,26 +210,28 @@ class _SoundsListPageState extends State<SoundsListPage> {
                       GestureDetector(
                         onTap: onLanguageTap,
                         child: Container(
-                          padding: EdgeInsets.symmetric(horizontal: 7.w,vertical: 2.h),
+                          padding: EdgeInsets.symmetric(
+                              horizontal: 7.w, vertical: 2.h),
                           decoration: BoxDecoration(
-                            color: const Color(0xfff4f5f7),
-                            borderRadius: BorderRadius.circular(8.w)
-                          ),
-                            child: Row(
-                              children: [
-                                Transform.translate(
-                                  offset: Offset(0,1.5.h),
-                                  child: Text(
-                                    '英文',
-                                    style: MyText.bodyText2
-                                        .copyWith(color: kPrimaryColor,height: 1),
-                                  ),
+                              color: const Color(0xfff4f5f7),
+                              borderRadius: BorderRadius.circular(8.w)),
+                          child: Row(
+                            children: [
+                              Transform.translate(
+                                offset: Offset(0, 1.5.h),
+                                child: Text(
+                                  '英文',
+                                  style: MyText.bodyText2.copyWith(
+                                      color: kPrimaryColor, height: 1),
                                 ),
-                                SizedBox(width: 7),
-                                SvgPicture.asset('assets/svgs/right_arrow.svg',height: 9.h,)
-                              ],
-                            ),
-
+                              ),
+                              SizedBox(width: 7),
+                              SvgPicture.asset(
+                                'assets/svgs/right_arrow.svg',
+                                height: 9.h,
+                              )
+                            ],
+                          ),
                         ),
                       )
                     ],
@@ -176,7 +255,7 @@ class _SoundsListPageState extends State<SoundsListPage> {
                 MyButton(
                   image: '24_play',
                   size: 24.w,
-                  onTap: onPlayTap,
+                  onTap: () => onPlayTap(index),
                 ),
                 SizedBox(height: 13.h),
                 Padding(
@@ -194,4 +273,11 @@ class _SoundsListPageState extends State<SoundsListPage> {
       ),
     );
   }
+}
+
+class Sound {
+  Sound(this.path, this.changedTime);
+
+  String path;
+  DateTime changedTime;
 }

@@ -5,8 +5,15 @@ class MyButton extends StatelessWidget {
   final String image;
   final double size;
   final VoidCallback? onTap;
-  const MyButton({Key? key, this.child, required this.image, this.onTap, required this.size})
+
+  const MyButton(
+      {Key? key,
+      this.child,
+      required this.image,
+      this.onTap,
+      required this.size})
       : super(key: key);
+
   @override
   Widget build(BuildContext context) {
     return GestureDetector(

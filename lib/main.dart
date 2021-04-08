@@ -1,13 +1,16 @@
 import 'dart:io';
+import 'package:flutter/cupertino.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:sounds_recorder/pages/link_failed_page.dart';
+import 'package:oktoast/oktoast.dart';
 import 'package:sounds_recorder/pages/load_page.dart';
 import 'package:sounds_recorder/pages/sounds_list_page.dart';
+import 'app_settings.dart';
 
-void main() {
+Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  await AppSettings().initPath();
   //设置状态栏透明
   if (Platform.isAndroid) {
     SystemUiOverlayStyle systemUiOverlayStyle =
@@ -25,12 +28,12 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return ScreenUtilInit(
       designSize: Size(375, 812),
-      builder: () => MaterialApp(
-        title: 'Flutter Demo',
-        theme: ThemeData(
-          primarySwatch: Colors.blue,
+      builder: () => OKToast(
+        dismissOtherOnShow: true,
+        child: MaterialApp(
+          title: 'Flutter Demo',
+          home: SoundsListPage(),
         ),
-        home: LinkFailedPage(),
       ),
     );
   }
