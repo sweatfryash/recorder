@@ -24,6 +24,7 @@ class _SoundsListPageState extends State<SoundsListPage> {
   final List<Sound> soundList = <Sound>[];
   late Future _future;
 
+  ValueNotifier<bool> _refresh = ValueNotifier<bool>(false);
   @override
   void initState() {
     super.initState();
@@ -50,9 +51,8 @@ class _SoundsListPageState extends State<SoundsListPage> {
                 Expanded(
                     child: RefreshIndicator(
                   onRefresh: () {
-                    setState(() {
-                      _future = _getSoundList();
-                    });
+                    _getSoundList()
+                        .then((_) => _refresh.value = !_refresh.value);
                     return Future.value();
                   },
                   child: FutureBuilder(
@@ -62,14 +62,19 @@ class _SoundsListPageState extends State<SoundsListPage> {
                       if (snapshot.hasError) {
                         return Text('Error: ${snapshot.error}');
                       } else {
-                        if (snapshot.connectionState == ConnectionState.done) {
-                          return _soundListView();
-                        } else {
-                          if (soundList.isEmpty) {
+                        switch (snapshot.connectionState) {
+                          case ConnectionState.none:
+                          case ConnectionState.waiting:
+                          case ConnectionState.active:
                             return Text('loading...');
-                          } else {
-                            return _soundListView();
-                          }
+                          case ConnectionState.done:
+                            return ValueListenableBuilder(
+                              valueListenable: _refresh,
+                              builder: (BuildContext context, bool value,
+                                  Widget? child) {
+                                return _soundListView();
+                              },
+                            );
                         }
                       }
                     },
@@ -164,8 +169,14 @@ class _SoundsListPageState extends State<SoundsListPage> {
 
   //右下角的悬浮图标
   void onMicTap() {
-    Navigator.push(context,
-        CupertinoPageRoute(builder: (BuildContext context) => RecordPage()));
+    Navigator.push<String>(context,
+            CupertinoPageRoute(builder: (BuildContext context) => RecordPage()))
+        .then((String? value) {
+      if (value != null) {
+        soundList.insert(0, Sound(value, DateTime.now()));
+        _refresh.value = !_refresh.value; //刷新列表
+      }
+    });
   }
 
   void onTransTap() {}

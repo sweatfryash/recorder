@@ -136,12 +136,12 @@ class _PlayPageState extends State<PlayPage> {
                   _isPlaying.value = false;
                 }
               },
-              onChangeEnd: (double value) {
-                isSeeking = false;
+              onChangeEnd: (double value) async {
                 if (_player.isOpen()) {
-                  _player.seekToPlayer(Duration(microseconds: value.toInt()));
-                  if (_player.isPaused) {
-                    //_player.resumePlayer();
+                 await _player.seekToPlayer(Duration(microseconds: value.toInt()));
+                 isSeeking = false;
+                 if (_player.isPaused) {
+                    _player.resumePlayer();
                     _isPlaying.value = true;
                   }
                 }

@@ -28,30 +28,33 @@ class _RecordPageState extends State<RecordPage> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      resizeToAvoidBottomInset: false,
-      body: Column(
-        children: [
-          SizedBox(width: double.infinity, height: 45.h),
-          appBar(),
-          SizedBox(height: 190.h),
-          Container(
-            color: kPrimaryColor,
-            width: 63.w,
-            height: 30.7.h,
-          ),
-          SizedBox(height: 66.33.h),
-          buildTime(),
-          SizedBox(height: 242.98.h),
-          Row(
-            children: [
-              SizedBox(width: 147.5.w),
-              recordButton(),
-              SizedBox(width: 40.5.w),
-              saveButton(context)
-            ],
-          )
-        ],
+    return WillPopScope(
+      onWillPop: _onWillPop,
+      child: Scaffold(
+        resizeToAvoidBottomInset: false,
+        body: Column(
+          children: [
+            SizedBox(width: double.infinity, height: 45.h),
+            appBar(),
+            SizedBox(height: 190.h),
+            Container(
+              color: kPrimaryColor,
+              width: 63.w,
+              height: 30.7.h,
+            ),
+            SizedBox(height: 66.33.h),
+            buildTime(),
+            SizedBox(height: 242.98.h),
+            Row(
+              children: [
+                SizedBox(width: 147.5.w),
+                recordButton(),
+                SizedBox(width: 40.5.w),
+                saveButton(context)
+              ],
+            )
+          ],
+        ),
       ),
     );
   }
@@ -93,9 +96,14 @@ class _RecordPageState extends State<RecordPage> {
         if (!_recorder.isPaused) {
           _recorder.openAudioSession().then((_) async {
             _dateTime = DateTime.now();
-            String path =
-                AppSettings.basePath + '/sounds/' + _dateTime.toString().split('.').first;
-            _recorder.startRecorder(toFile: path, codec: Codec.aacADTS);
+            String path = AppSettings.basePath +
+                '/sounds/' +
+                _dateTime.toString().split('.').first;
+            await _recorder.setSubscriptionDuration(Duration(milliseconds: 1));
+            await _recorder.startRecorder(toFile: path, codec: Codec.aacADTS);
+            _recorder.onProgress!.listen((RecordingDisposition event) {
+              _duration.value = event.duration;
+            });
             _hasRecord = true;
           });
         } else {
@@ -134,8 +142,7 @@ class _RecordPageState extends State<RecordPage> {
                 style: MyText.bodyText1.copyWith(fontSize: 18.sp),
                 decoration: InputDecoration(
                   focusedBorder: UnderlineInputBorder(
-                      borderSide: BorderSide(color: kPrimaryColor)
-                  ),
+                      borderSide: BorderSide(color: kPrimaryColor)),
                 ),
               ),
               actions: [
@@ -161,10 +168,11 @@ class _RecordPageState extends State<RecordPage> {
           _recorder.stopRecorder().then((path) {
             if (path != null) {
               File sound = File(path);
-              sound.renameSync(AppSettings.basePath +
+              String soundPath = AppSettings.basePath +
                   '/sounds/' +
-                  textEditingController.text);
-              Navigator.of(context).pop();
+                  textEditingController.text;
+              sound.renameSync(soundPath);
+              Navigator.of(context).pop(textEditingController.text);
             }
           });
         }
@@ -174,11 +182,18 @@ class _RecordPageState extends State<RecordPage> {
     }
   }
 
-  Text buildTime() {
-    return Text(
-      '00:00:00',
-      style: TextStyle(
-          color: kBodyTextColor, fontWeight: FontWeight.w400, fontSize: 50.sp),
+  Widget buildTime() {
+    return ValueListenableBuilder(
+      valueListenable: _duration,
+      builder: (BuildContext context, Duration value, Widget? child) {
+        return Text(
+          value.toStringAsMyFormat(),
+          style: TextStyle(
+              color: kBodyTextColor,
+              fontWeight: FontWeight.w400,
+              fontSize: 50.sp),
+        );
+      },
     );
   }
 
@@ -203,9 +218,70 @@ class _RecordPageState extends State<RecordPage> {
         size: 42.h,
         image: 'back',
         onTap: () {
-          if (Navigator.of(context).canPop()) {
-            Navigator.of(context).pop();
-          }
+          _onWillPop().then((bool value) {
+            if (value) {
+              Navigator.of(context).pop();
+            }
+          });
         });
+  }
+
+  Future<bool> _onWillPop() async {
+    if (_recorder.isRecording) {
+      await _recorder.pauseRecorder();
+      _isRecording.value = false;
+    }
+
+    if (_recorder.isPaused) {
+      bool? res = await showDialog<bool>(
+        context: context,
+        builder: (BuildContext context) {
+          return AlertDialog(
+            title: Text(
+              '确认放弃当前的录音吗',
+              style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 18.sp,
+                  color: kBodyTextColor),
+            ),
+            actions: [
+              TextButton(
+                  onPressed: () {
+                    Navigator.of(context).pop(false);
+                  },
+                  child: Text('取消', style: MyText.bodyText1)),
+              TextButton(
+                child: Text(
+                  '放弃',
+                  style: MyText.bodyText1,
+                ),
+                onPressed: () {
+                  _recorder.stopRecorder().then((path) {
+                    if (path != null) {
+                      File sound = File(path);
+                      sound.deleteSync();
+                    }
+                  });
+                  Navigator.of(context).pop(true);
+                },
+              )
+            ],
+          );
+        },
+      );
+      return res!;
+    } else {
+      return Future.value(true);
+    }
+  }
+}
+
+extension DurationExtension on Duration {
+  String toStringAsMyFormat() {
+    String res = this.toString().split('.').first;
+    if (this.inHours < 10) {
+      res = '0' + res;
+    }
+    return res;
   }
 }
